@@ -1,10 +1,15 @@
+SOURCES = FourierTransform.c TestFourierTransform.c
+
+OBJECTS = $(SOURCES:.c=.o)
+
 CC = gcc
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -Werror
 
-all: FourierTransform
+all: TestFourierTransform
 
-FourierTransform: FourierTransform.c
-	$(CC) $(CFLAGS) -o FourierTransform FourierTransform.c
+TestFourierTransform: TestFourierTransform.o FourierTransform.o
+	$(CC) $(CFLAGS) -o TestFourierTransform $^ $(LDFLAGS)
 
 clean:
-	rm FourierTransform
+	rm *.o TestFourierTransform
+
