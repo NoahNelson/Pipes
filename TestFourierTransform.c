@@ -6,15 +6,17 @@
 #include <stdlib.h>
 #include <time.h>
 #include <complex.h>
+#include <math.h>
 
 #define RDOUBLE() (((double) rand()) / ((double) RAND_MAX))
 #define ERR_TOL 1.0E-5
+
 
 /* Helper function that determines if two complex numbers are within a given
  * error tolerance of each other. */
 int ceq(double complex a, double complex b) {
     double complex diff = a - b;
-    return creal(diff * conj(diff)) < ERR_TOL;
+    return cabs(diff) < ERR_TOL;
 }
 
 /* Helper function to compare two complex arrays for equality. */
@@ -89,7 +91,7 @@ void speedTest(int n) {
     }
     
     start = clock();
-    slowFourierTransform(input, output, n);
+    /* slowFourierTransform(input, output, n);*/
     end = clock();
     secs = (double)(end - start) / CLOCKS_PER_SEC;
     printf("slow fourier transform took %f seconds.\n", secs);
@@ -102,6 +104,32 @@ void speedTest(int n) {
 
     free(input);
     free(output);
+}
+
+#define PURESIZE 65536
+
+/* Generates an input representing a pure tone, and runs it through the fft.
+ * Test of what the output means in terms of frequencies. */
+void testPureTone() {
+
+    double complex * input = malloc(sizeof(double complex) * PURESIZE);
+    double complex * output = malloc(sizeof(double complex) * PURESIZE);
+    if (input == NULL || output == NULL) {
+        fprintf(stderr, "out of memory.\n");
+        exit(1);
+    }
+
+    /* populate the input array with samples from a pure 440 Hz tone. */
+    for (int i = 0; i < PURESIZE; i++) {
+        input[i] = sin(2 * M_PI * 440 * i / 44100);
+    }
+
+    fastFourierTransform(input, output, PURESIZE);
+
+    printf("frequency:\t magnitude:\n");
+    for (int i = 0; i < PURESIZE; i++) {
+        printf("%d:\t %.2f\n", i * 44100 / PURESIZE, cabs(output[i]));
+    }
 }
 
 /* Program usage:
@@ -140,6 +168,8 @@ int main(int argc, char *argv[]) {
     n = atoi(argv[1]);
 
     speedTest(n);
+
+    testPureTone();
 
     return 0;
 

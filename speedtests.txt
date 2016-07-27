@@ -1,0 +1,24 @@
+Quick benchmarks for speed tests, all carried out with random seed 1
+
+for 1024 sized vectors:
+Slow fourier transform (completely naive): around 0.064 seconds
+fast fourier transform (creates new arrays): around 0.001 seconds
+fast fourier transform (in place): around 0.00098 seconds
+
+4096:
+slow (naive): about 1 second
+fast (new arrays): around 0.0049
+fast (in place): 0.0045
+
+65536:
+slow (naive): 420 seconds the one time I tried this, not with random seed 1
+fast (new arrays): around 0.097
+fast (in place): 0.088
+
+1048576:
+fast (new arrays): around 1.75
+fast (in place): 1.68
+
+4194304:
+fast (new arrays): around 7.63
+fast (in place): 7.35

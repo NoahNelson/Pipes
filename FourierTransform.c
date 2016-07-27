@@ -34,6 +34,28 @@ int isPowerofTwo(int n) {
     return 0;
 }
 
+/* Helper function for the Cooley-Tukey fast fourier transform:
+ * takes a step argument which refers to the length of the interleaving. */
+void fftHelper(double complex * input,
+        double complex * output, int n, int step) {
+
+    if (n == 1) {
+        /* base case, trivially return the only element of the input. */
+        output[0] = input[0];
+        return;
+    }
+
+    fftHelper(input, output, n / 2, 2 * step);
+    fftHelper(input + step, output + (n / 2), n / 2, 2 * step);
+    
+    for (int i = 0; i < n / 2; i++) {
+        double complex temp = output[i];
+        output[i] = temp + cexp(-2.0 * M_PI * I * i / n) * output[i + n / 2];
+        output[i + n / 2] = temp - \
+                            cexp(-2.0 * M_PI * I * i / n) * output[i + n / 2];
+    }
+}
+
 
 /* Runs a fast fourier transform (Cooley-Tukey algorithm) on the input array.
  * Places the fourier transform of the array beginning at input in the array
@@ -43,16 +65,17 @@ void fastFourierTransform(double complex * input,
         double complex * output, int n) {
     assert(isPowerofTwo(n));
 
+    fftHelper(input, output, n, 1);
+
+    /* OLD IMPLEMENTATION - NOT MEMORY EFFICIENT
     double complex * evensin, * oddsin;
     double complex * evensout, * oddsout;
 
     if (n == 1) {
-        /* base case, trivially return the only element of the input. */
         output[0] = input[0];
         return;
     }
     
-    /* prepare the even and odd slices for recursive call. */
     evensin = malloc(sizeof(double complex) * (n/2));
     oddsin = malloc(sizeof(double complex) * (n/2));
     if (evensin == NULL || oddsin == NULL) {
@@ -67,7 +90,6 @@ void fastFourierTransform(double complex * input,
         exit(1);
     }
 
-    /* copy in the odd and even components of the input. */
     for (int i = 0; i < n; i += 2) {
         evensin[i/2] = input[i];
         oddsin[i/2] = input[i+1];
@@ -79,7 +101,6 @@ void fastFourierTransform(double complex * input,
     free(evensin);
     free(oddsin);
 
-    /* now, assemble final output with the even and odd outputs. */
     for (int i = 0; i < n / 2; i++) {
         double complex xi = evensout[i] + cexp((-2.0 * M_PI * I * i) / ((double) n)) * oddsout[i];
         output[i] = xi;
@@ -91,4 +112,5 @@ void fastFourierTransform(double complex * input,
 
     free(oddsout);
     free(evensout);
+    */
 }
