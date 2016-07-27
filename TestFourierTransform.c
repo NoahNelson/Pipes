@@ -42,8 +42,10 @@ int correctnessTest() {
     double complex z[] = {1 + 3.0 * I, 1 - 4.0 * I};
     double complex r[] = {2 - 1.0 * I, 0 + 7.0 * I};
     double complex * x1, * x2;
-    x1 = slowFourierTransform(z, 2);
-    x2 = fastFourierTransform(z, 2);
+    x1 = malloc(sizeof(double complex) * 2);
+    x2 = malloc(sizeof(double complex) * 2);
+    slowFourierTransform(z, x1, 2);
+    fastFourierTransform(z, x2, 2);
 
     printf("Expected:\tGot: (slow)\n");
     printCArrays(r, x1, 2);
@@ -80,15 +82,20 @@ void speedTest(int n) {
         input[i] = z;
     }
 
+    output = malloc(sizeof(double complex) * n);
+    if (output == NULL) {
+        fprintf(stderr, "error, out of memory\n");
+        exit(1);
+    }
+    
     start = clock();
-    output = slowFourierTransform(input, n);
+    slowFourierTransform(input, output, n);
     end = clock();
     secs = (double)(end - start) / CLOCKS_PER_SEC;
     printf("slow fourier transform took %f seconds.\n", secs);
-    free(output);
 
     start = clock();
-    output = fastFourierTransform(input, n);
+    fastFourierTransform(input, output, n);
     end = clock();
     secs = (double)(end - start) / CLOCKS_PER_SEC;
     printf("fast fourier transform took %f seconds.\n", secs);

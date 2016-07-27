@@ -1,5 +1,7 @@
 #include <complex.h>
 
-double complex * slowFourierTransform(double complex * input, int n);
+void slowFourierTransform(double complex * input,
+        double complex * output, int n);
 
-double complex * fastFourierTransform(double complex * input, int n);
+void fastFourierTransform(double complex * input,
+        double complex * output, int n);
