@@ -5,3 +5,6 @@ void slowFourierTransform(double complex * input,
 
 void fastFourierTransform(double complex * input,
         double complex * output, int n);
+
+void fourierSlide(double complex * fourierResults,
+        double complex earlyInput, double complex nextInput, int n);

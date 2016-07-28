@@ -66,51 +66,22 @@ void fastFourierTransform(double complex * input,
     assert(isPowerofTwo(n));
 
     fftHelper(input, output, n, 1);
+}
 
-    /* OLD IMPLEMENTATION - NOT MEMORY EFFICIENT
-    double complex * evensin, * oddsin;
-    double complex * evensout, * oddsout;
 
-    if (n == 1) {
-        output[0] = input[0];
-        return;
-    }
-    
-    evensin = malloc(sizeof(double complex) * (n/2));
-    oddsin = malloc(sizeof(double complex) * (n/2));
-    if (evensin == NULL || oddsin == NULL) {
-        fprintf(stderr, "Error, out of memory\n");
-        exit(1);
-    }
+/* Slides a fourier transform to the next window of time samples.
+ * This is a destructive process and will overwrite the fourier coefficients
+ * calculated from the last window of time samples, passed in as fourierResults.
+ */
+void fourierSlide(double complex * fourierResults,
+        double complex earlyInput, double complex nextInput, int n) {
 
-    evensout = malloc(sizeof(double complex) * (n/2));
-    oddsout = malloc(sizeof(double complex) * (n/2));
-    if (evensout == NULL || oddsout == NULL) {
-        fprintf(stderr, "Error, out of memory\n");
-        exit(1);
+    for (int i = 0; i < n; i++) {
+        double complex newResult = fourierResults[i];
+        newResult -= earlyInput;
+        newResult += nextInput;
+        newResult *= cexp(2.0 * M_PI * I * i / n);
+        fourierResults[i] = newResult;
     }
 
-    for (int i = 0; i < n; i += 2) {
-        evensin[i/2] = input[i];
-        oddsin[i/2] = input[i+1];
-    }
-
-    fastFourierTransform(evensin, evensout, n / 2);
-    fastFourierTransform(oddsin, oddsout, n / 2);
-
-    free(evensin);
-    free(oddsin);
-
-    for (int i = 0; i < n / 2; i++) {
-        double complex xi = evensout[i] + cexp((-2.0 * M_PI * I * i) / ((double) n)) * oddsout[i];
-        output[i] = xi;
-    }
-    for (int i = n / 2; i < n; i++) {
-        double complex xi = evensout[i - n/2] + cexp((-2.0 * M_PI * I * i) / ((double) n)) * oddsout[i - n/2];
-        output[i] = xi;
-    }
-
-    free(oddsout);
-    free(evensout);
-    */
 }
