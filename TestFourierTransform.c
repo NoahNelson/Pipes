@@ -43,17 +43,22 @@ int correctnessTest() {
     int result = 0;
     double complex z[] = {1 + 3.0 * I, 1 - 4.0 * I};
     double complex r[] = {2 - 1.0 * I, 0 + 7.0 * I};
+    double complex n = 2 + 8 * I;
+    double complex r2[] = {3 + 4 * I, -1 - 12 * I};
     double complex * x1, * x2;
-    x1 = malloc(sizeof(double complex) * 2);
-    x2 = malloc(sizeof(double complex) * 2);
-    slowFourierTransform(z, x1, 2);
-    fastFourierTransform(z, x2, 2);
+    double complex * x3 = malloc(sizeof(double complex) * 2);
+    x1 = slowFourierTransform(z, 2);
+    x2 = fastFourierTransform(z, 2);
+    fourierSlide(x2, x3, 1 + 3 * I, n, 2);
 
     printf("Expected:\tGot: (slow)\n");
     printCArrays(r, x1, 2);
 
     printf("Expected:\tGot: (fast)\n");
     printCArrays(r, x2, 2);
+
+    printf("Expected:\tGot: (slide)\n");
+    printCArrays(r2, x3, 2);
 
     result = result || (!carrEquals(r, x1, 2));
     result = result || (!carrEquals(r, x2, 2));
@@ -84,20 +89,17 @@ void speedTest(int n) {
         input[i] = z;
     }
 
-    output = malloc(sizeof(double complex) * n);
-    if (output == NULL) {
-        fprintf(stderr, "error, out of memory\n");
-        exit(1);
-    }
-    
+/*
     start = clock();
-    /* slowFourierTransform(input, output, n);*/
+    output = slowFourierTransform(input, n);
     end = clock();
     secs = (double)(end - start) / CLOCKS_PER_SEC;
     printf("slow fourier transform took %f seconds.\n", secs);
+    free(output);
+*/
 
     start = clock();
-    fastFourierTransform(input, output, n);
+    output = fastFourierTransform(input, n);
     end = clock();
     secs = (double)(end - start) / CLOCKS_PER_SEC;
     printf("fast fourier transform took %f seconds.\n", secs);
@@ -113,8 +115,7 @@ void speedTest(int n) {
 void testPureTone() {
 
     double complex * input = malloc(sizeof(double complex) * PURESIZE);
-    double complex * output = malloc(sizeof(double complex) * PURESIZE);
-    if (input == NULL || output == NULL) {
+    if (input == NULL) {
         fprintf(stderr, "out of memory.\n");
         exit(1);
     }
@@ -124,12 +125,15 @@ void testPureTone() {
         input[i] = sin(2 * M_PI * 440 * i / 44100);
     }
 
-    fastFourierTransform(input, output, PURESIZE);
+    double complex * output = fastFourierTransform(input, PURESIZE);
 
     printf("frequency:\t magnitude:\n");
     for (int i = 0; i < PURESIZE; i++) {
         printf("%d:\t %.2f\n", i * 44100 / PURESIZE, cabs(output[i]));
     }
+
+    free(input);
+    free(output);
 }
 
 /* Program usage:
@@ -169,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     speedTest(n);
 
-    testPureTone();
+    /* testPureTone();*/
 
     return 0;
 

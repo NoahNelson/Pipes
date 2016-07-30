@@ -9,8 +9,13 @@
 
 /* Performs a naive computation of the discrete fourier transform of the input
  * vector. Stores output in the pointer referenced by output argument. */
-void slowFourierTransform(double complex * input,
-        double complex * output, int n) {
+double complex * slowFourierTransform(double complex * input, int n) {
+
+    double complex * output = malloc(sizeof(double complex) * n);
+    if (output == NULL) {
+        fprintf(stderr, "err out of memory!\n");
+        exit(1);
+    }
 
     for (int k = 0; k < n; k++) {
         double complex nextResult = 0.0;
@@ -20,6 +25,8 @@ void slowFourierTransform(double complex * input,
         }
         output[k] = nextResult;
     }
+
+    return output;
 }
 
 /* helper predicate that returns nonzero if and only if the given integer is a
@@ -58,14 +65,20 @@ void fftHelper(double complex * input,
 
 
 /* Runs a fast fourier transform (Cooley-Tukey algorithm) on the input array.
- * Places the fourier transform of the array beginning at input in the array
- * beginning at output.
+ * Allocates an output array of size n which holds the results.
  * Assumes the array's length is a power of two. */
-void fastFourierTransform(double complex * input,
-        double complex * output, int n) {
+double complex * fastFourierTransform(double complex * input, int n) {
     assert(isPowerofTwo(n));
 
-    fftHelper(input, output, n, 1);
+    double complex * result = malloc(sizeof(double complex) * n);
+    if (result == NULL) {
+        fprintf(stderr, "err out of memory!\n");
+        exit(1);
+    }
+
+    fftHelper(input, result, n, 1);
+
+    return result;
 }
 
 
@@ -73,7 +86,7 @@ void fastFourierTransform(double complex * input,
  * This is a destructive process and will overwrite the fourier coefficients
  * calculated from the last window of time samples, passed in as fourierResults.
  */
-void fourierSlide(double complex * fourierResults,
+void fourierSlide(double complex * fourierResults, double complex * output,
         double complex earlyInput, double complex nextInput, int n) {
 
     for (int i = 0; i < n; i++) {
@@ -81,7 +94,7 @@ void fourierSlide(double complex * fourierResults,
         newResult -= earlyInput;
         newResult += nextInput;
         newResult *= cexp(2.0 * M_PI * I * i / n);
-        fourierResults[i] = newResult;
+        output[i] = newResult;
     }
 
 }

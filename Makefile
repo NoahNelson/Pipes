@@ -5,14 +5,14 @@ OBJECTS = $(SOURCES:.c=.o)
 CC = gcc
 CFLAGS = -g -Wall -Werror
 
-all: TestFourierTransform
+all: TestFourierTransform FingerPrinter
 
 TestFourierTransform: TestFourierTransform.o FourierTransform.o
 	$(CC) $(CFLAGS) -o TestFourierTransform $^ $(LDFLAGS)
 
-FingerPrinter: FingerPrinter.o
+FingerPrinter: FingerPrinter.o FourierTransform.o
 	$(CC) $(CFLAGS) -o FingerPrinter $^ $(LDFAGS)
 
 clean:
-	rm *.o TestFourierTransform
+	rm -f *.o TestFourierTransform FingerPrinter
 
