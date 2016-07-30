@@ -1,4 +1,4 @@
-SOURCES = FourierTransform.c TestFourierTransform.c
+SOURCES = FourierTransform.c TestFourierTransform.c FingerPrinter.c
 
 OBJECTS = $(SOURCES:.c=.o)
 
@@ -9,6 +9,9 @@ all: TestFourierTransform
 
 TestFourierTransform: TestFourierTransform.o FourierTransform.o
 	$(CC) $(CFLAGS) -o TestFourierTransform $^ $(LDFLAGS)
+
+FingerPrinter: FingerPrinter.o
+	$(CC) $(CFLAGS) -o FingerPrinter $^ $(LDFAGS)
 
 clean:
 	rm *.o TestFourierTransform

@@ -1,3 +1,5 @@
 TestFourierTransform
+FingerPrinter
 *.o
 .DS_Store
+
