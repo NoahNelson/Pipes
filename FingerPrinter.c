@@ -5,12 +5,21 @@
 #include <stdlib.h>
 #include <complex.h>
 #include "FourierTransform.h"
-
-/* frequency-time peaks and the vectors to hold a variable number of them. */
+#include "WAVReading.h"
 
 /* Initial capacity of peak vectors. */
 #define I_CAP 8
+/* Length of fourier transforms - how many samples are fed into fft. */
+#define FFT_LEN 512
+/* Sample-step between time windows - how many samples we slide forward to the
+ * next fft. */
+/*#define SLIDE_LEN FFT_LEN / 2*/
 
+/**********************
+ * Peak Data Structures
+ *
+ * frequency-time peaks and dynamic vectors to hold a variable number of them.
+ */
 
 /* Structure for frequency-time peaks. */
 typedef struct _Peak {
@@ -74,53 +83,6 @@ void freeVector(PeakVector * vect) {
     free(vect);
 }
 
-
-/* Reads the header of a WAV file and returns the number of channels in it.
- * Leaves the file pointer at the beginning of the sample values in the file.
- */
-uint16_t readWAVHeader(FILE * infile) {
-
-    uint16_t result;
-
-    if (fseek(infile, 22, SEEK_SET)) {
-        fprintf(stderr, "error reading file.\n");
-        exit(1);
-    }
-
-    if (fread(&result, 2, 1, infile) != 1) {
-        fprintf(stderr, "error reading file.\n");
-        exit(1);
-    }
-
-    if (fseek(infile, 44, SEEK_SET)) {
-        fprintf(stderr, "error reading file.\n");
-        exit(1);
-    }
-
-    return result;
-}
-
-/* Read the first m samples from a WAV file into the array passed in.
- * Assumes the file pointer begins at the samples, header has been skipped. */
-void getNextMValues(FILE * infile,
-        double complex * output, int m, int channels) {
-
-    for (int i = 0; i < m; i++) {
-        uint16_t sample;
-        if (fread(&sample, 2, 1, infile) != 1) {
-            fprintf(stderr, "error reading file.\n");
-            exit(1);
-        }
-
-        output[i] = sample;
-
-        if (fseek(infile, 2 * channels, SEEK_CUR)) {
-            fprintf(stderr, "error reading file.\n");
-            exit(1);
-        }
-    }
-}
-
 /* Compute the time-frequency peaks from the samples in a given WAV file. */
 PeakVector * computePeaks(FILE * infile, int m, int channels) {
     PeakVector * result = newVector();
@@ -138,26 +100,17 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
 
     PeakVector * potentials = newVector();
     int t = 0;
-    
-    /* Don't consider the edges of the spectrogram as a peak */
-    /*for (int i = 1; i < m - 1; i++) {
-        if (cabs(oldFFTValues[i]) > cabs(oldFFTValues[i-1]) &&
-                    cabs(oldFFTValues[i]) > cabs(oldFFTValues[i+1])) {
-            Peak possiblePeak = { .frequency = i, .timeWindow = 0 };
-            vectorAppend(potentials, possiblePeak);
-        }
-    }*/
 
     double complex * nextFFTValues;
 
-    double complex nextInput;
+    for (int i = 0; i < m/2; i++)
+        inputs[i] = inputs[i + m/2];
+
+    int fileEnd = getNextMValues(infile, inputs + m/2, m/2, channels) != m/2;
     /* Read till the end of the file, collecting peaks. */
-    while (fread(&nextInput, 2, 1, infile) == 1) {
+    while (!fileEnd) {
         
-        for (int i = 0; i < m/2; i++)
-            inputs[i] = inputs[i + m/2];
         
-        getNextMValues(infile, inputs + m/2, m/2, channels);
 
         nextFFTValues = fastFourierTransform(inputs, m);
 
@@ -202,11 +155,7 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
 
         t++;
 
-        /* scan past the other channels to the next sample we want. */
-        if (fseek(infile, 2 * channels, SEEK_CUR)) {
-            fprintf(stderr, "error reading file.\n");
-            exit(1);
-        }
+        fileEnd = getNextMValues(infile, inputs + m/2, m/2, channels) != m/2;
     }
 
     return result;
@@ -219,7 +168,7 @@ int main(int argc, char *argv[]) {
 
     printf("detected %d channels.\n", channels);
 
-    PeakVector * peaks = computePeaks(wav, 512, channels);
+    PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
 
     printf("detected %d peaks.\n", peaks->elements);
 
