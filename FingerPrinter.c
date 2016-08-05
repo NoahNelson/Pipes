@@ -190,6 +190,7 @@ Fingerprint fromPeaks(Peak p1, Peak p2) {
 }
 
 /* fingerprint vectors. */
+/* TODO: use generic void * vectors? */
 typedef struct _FingerprintVector {
     int capacity;
     int elements;
@@ -246,6 +247,8 @@ void freeFPVector(FingerprintVector * vect) {
     free(vect);
 }
 
+/* Fingerprint all of the peaks in a given peak vector. Returns a vector
+ * of the fingerprints that were generated. */
 FingerprintVector * fingerprintPeaks(PeakVector * pv) {
 
     FingerprintVector * result = newFPVector();
