@@ -16,7 +16,9 @@
 /*#define SLIDE_LEN FFT_LEN / 2*/
 /* Neighborhood on each side of a point which it must exceed to be a peak. */
 #define SIDES 2
-#define THRESHOLD 4000000.0
+#define THRESHOLD 3800000.0
+#define DELTA 10000.0
+#define FANOUT 5
 
 /**********************
  * Peak Data Structures
@@ -131,11 +133,11 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
             double mag = cabs(nextFFTValues[i]);
             int isPeak = 1;
             for (int j = 1; j <= SIDES; j++) {
-                isPeak = isPeak && mag > cabs(nextFFTValues[i+j]);
-                isPeak = isPeak && mag > cabs(nextFFTValues[i-j]);
+                isPeak = isPeak && mag > cabs(nextFFTValues[i+j]) + DELTA;
+                isPeak = isPeak && mag > cabs(nextFFTValues[i-j]) + DELTA;
             }
-            isPeak = isPeak && (mag > cabs(oldFFTValues[i]));
-            isPeak = isPeak && (mag > THRESHOLD);
+            isPeak = isPeak && mag > cabs(oldFFTValues[i]) + DELTA;
+            isPeak = isPeak && mag > THRESHOLD;
             if (isPeak) {
                 /* found a potential peak! */
                 Peak poss = { .frequency = i, .timeWindow = t };
@@ -166,6 +168,100 @@ PeakVector * computePeaks2(FILE * infile, int m, int channels) {
     return NULL;
 }
 
+/* Structure of a fingerprint. */
+typedef struct _Fingerprint {
+    /* The time window of the first peak that makes up this fingerprint. */
+    int timeWindow;
+
+    /* The values that actually make up the hash of these fingerprints. */
+    /* The frequencies of the two peaks in the fingerprint. */
+    int frequency1;
+    int frequency2;
+    /* The time difference between the two peaks. */
+    int timedifference;
+} Fingerprint;
+
+/* Package a pair of peaks into a fingerprint. */
+Fingerprint fromPeaks(Peak p1, Peak p2) {
+    Fingerprint result = { .timeWindow = p1.timeWindow,
+        .frequency1 = p1.frequency, .frequency2 = p2.frequency,
+        .timedifference = p2.timeWindow - p1.timeWindow };
+    return result;
+}
+
+/* fingerprint vectors. */
+typedef struct _FingerprintVector {
+    int capacity;
+    int elements;
+    Fingerprint * fingerprints;
+} FingerprintVector;
+
+/* Initialize an empty vector */
+FingerprintVector * newFPVector() {
+    FingerprintVector * new = malloc(sizeof(FingerprintVector));
+    if (new == NULL) {
+        fprintf(stderr, "error! Out of memory.\n");
+        exit(1);
+    }
+
+    new->capacity = I_CAP;
+    new->elements = 0;
+    new->fingerprints = malloc(sizeof(Fingerprint) * I_CAP);
+    if (new->fingerprints == NULL) {
+        fprintf(stderr, "error! Out of memory.\n");
+        exit(1);
+    }
+
+    return new;
+}
+
+/* Get the fingerprint at a given index in a fingerprint vector. */
+Fingerprint getFingerprint(FingerprintVector * vect, int index) {
+    if (index < 0 || index >= vect->elements) {
+        fprintf(stderr, "error! vector access at invalid index.\n");
+        exit(1);
+    }
+    return vect->fingerprints[index];
+}
+
+/* Append a fingerprint to a fingerprint vector, potentially resizing it. */
+void vectorFPAppend(FingerprintVector * vect, Fingerprint fp) {
+    if (vect->elements == vect->capacity) {
+        vect->capacity *= 2;
+        vect->fingerprints =
+            realloc(vect->fingerprints, sizeof(Fingerprint) * vect->capacity);
+        if (vect->fingerprints == NULL) {
+            fprintf(stderr, "error! Out of memory.\n");
+            exit(1);
+        }
+    }
+
+    vect->fingerprints[vect->elements] = fp;
+    vect->elements++;
+}
+
+/* Free the memory associated with a vector. Also frees the pointer passed. */
+void freeFPVector(FingerprintVector * vect) {
+    free(vect->fingerprints);
+    free(vect);
+}
+
+FingerprintVector * fingerprintPeaks(PeakVector * pv) {
+
+    FingerprintVector * result = newFPVector();
+    
+    for (int i = 0; i < pv->elements; i++) {
+        for (int j = 0; j < FANOUT; j++) {
+            if (i + j < pv->elements) {
+                Fingerprint fp = fromPeaks(getPeak(pv, i), getPeak(pv, i+j));
+                vectorFPAppend(result, fp);
+            }
+        }
+    }
+
+    return result;
+}
+
 int main(int argc, char *argv[]) {
 
     FILE * wav = fopen(argv[1], "r");
@@ -174,8 +270,10 @@ int main(int argc, char *argv[]) {
     printf("detected %d channels.\n", channels);
 
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
-
     printf("detected %d peaks.\n", peaks->elements);
+
+    FingerprintVector * prints = fingerprintPeaks(peaks);
+    printf("and created %d fingerprints.\n", prints->elements);
 
     return 0;
 }
