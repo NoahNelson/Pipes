@@ -14,6 +14,8 @@
 /* Sample-step between time windows - how many samples we slide forward to the
  * next fft. */
 /*#define SLIDE_LEN FFT_LEN / 2*/
+/* Neighborhood on each side of a point which it must exceed to be a peak. */
+#define SIDES 16
 
 /**********************
  * Peak Data Structures
@@ -110,18 +112,7 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
     /* Read till the end of the file, collecting peaks. */
     while (!fileEnd) {
         
-        
-
         nextFFTValues = fastFourierTransform(inputs, m);
-
-        /*for (int j = 0; j < 10; j++) {
-            fourierSlide(oldFFTValues, nextFFTValues, inputs[0], nextInput, m);
-
-             update the vector of inputs we're currently using 
-            for (int i = 0; i < m - 1; i++)
-                inputs[i] = inputs[i+1];
-            inputs[m-1] = nextInput;
-        }*/
 
         /* Check if we confirmed any potential peaks. */
         for (int i = 0; i < potentials->elements; i++) {
@@ -136,10 +127,15 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
         /* Find the next potential peaks. */
         freeVector(potentials);
         potentials = newVector();
-        for (int i = 1; i < m - 1; i++) {
+        for (int i = SIDES; i < m - SIDES; i++) {
             double mag = cabs(nextFFTValues[i]);
-            if (mag > cabs(nextFFTValues[i-1]) && mag > cabs(nextFFTValues[i+1])
-                    && mag > cabs(oldFFTValues[i])) {
+            int isPeak = 1;
+            for (int j = 1; j <= SIDES; j++) {
+                isPeak = isPeak && mag > cabs(nextFFTValues[i+j]);
+                isPeak = isPeak && mag > cabs(nextFFTValues[i-j]);
+            }
+            isPeak = isPeak && (mag > cabs(oldFFTValues[i]));
+            if (isPeak) {
                 /* found a potential peak! */
                 Peak poss = { .frequency = i, .timeWindow = t };
                 vectorAppend(potentials, poss);
@@ -159,6 +155,16 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
     }
 
     return result;
+}
+
+/* Second version of computePeaks, which holds the spectrogram in
+ * memory to find peaks. */
+PeakVector * computePeaks2(FILE * infile, int m, int channels) {
+
+    /* First, get the 
+
+    /* First, compute the spectrogram. */
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {

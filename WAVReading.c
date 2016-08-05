@@ -11,26 +11,45 @@
 /* Reads the header of a WAV file and returns the number of channels in it.
  * Leaves the file pointer at the beginning of the sample values in the file.
  */
-uint16_t readWAVHeader(FILE * infile) {
+uint16_t readWAVChannels(FILE * infile) {
 
     uint16_t result;
 
     if (fseek(infile, 22, SEEK_SET)) {
-        fprintf(stderr, "readWAVHeader: error reading file.\n");
+        fprintf(stderr, "readWAVChannels: error seeking file.\n");
         exit(1);
     }
 
     if (fread(&result, 2, 1, infile) != 1) {
-        fprintf(stderr, "readWAVHeader: error reading file.\n");
+        fprintf(stderr, "readWAVChannels: error reading file.\n");
         exit(1);
     }
 
     if (fseek(infile, 44, SEEK_SET)) {
-        fprintf(stderr, "readWAVHeader: error reading file.\n");
+        fprintf(stderr, "readWAVChannels: error seeking file.\n");
         exit(1);
     }
 
     return result;
+}
+
+/* Read a WAV header and use the number of channels to compute how many samples
+ * are in one channel from start to finish. */
+int readWAVLength(FILE * infile, int channels) {
+
+    int result;
+
+    if (fseek(infile, 40, SEEK_SET)) {
+        fprintf(stderr, "readWAVLength: error seeking file.\n");
+        exit(1);
+    }
+
+    if (fread(&result, 4, 1) != 1) {
+        fprintf(stderr, "readWAVLength: error reading file.\n");
+        exit(1);
+    }
+
+    
 }
 
 
