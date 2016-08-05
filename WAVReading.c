@@ -44,12 +44,17 @@ int readWAVLength(FILE * infile, int channels) {
         exit(1);
     }
 
-    if (fread(&result, 4, 1) != 1) {
+    if (fread(&result, 4, 1, infile) != 1) {
         fprintf(stderr, "readWAVLength: error reading file.\n");
         exit(1);
     }
 
-    
+    if (fseek(infile, 44, SEEK_SET)) {
+        fprintf(stderr, "readWAVLength: error seeking file.\n");
+        exit(1);
+    }
+        
+    return result / channels;
 }
 
 

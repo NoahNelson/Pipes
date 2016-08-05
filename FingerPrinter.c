@@ -15,7 +15,8 @@
  * next fft. */
 /*#define SLIDE_LEN FFT_LEN / 2*/
 /* Neighborhood on each side of a point which it must exceed to be a peak. */
-#define SIDES 16
+#define SIDES 2
+#define THRESHOLD 4000000.0
 
 /**********************
  * Peak Data Structures
@@ -124,7 +125,6 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
             }
         }
 
-        /* Find the next potential peaks. */
         freeVector(potentials);
         potentials = newVector();
         for (int i = SIDES; i < m - SIDES; i++) {
@@ -135,6 +135,7 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
                 isPeak = isPeak && mag > cabs(nextFFTValues[i-j]);
             }
             isPeak = isPeak && (mag > cabs(oldFFTValues[i]));
+            isPeak = isPeak && (mag > THRESHOLD);
             if (isPeak) {
                 /* found a potential peak! */
                 Peak poss = { .frequency = i, .timeWindow = t };
@@ -161,8 +162,6 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
  * memory to find peaks. */
 PeakVector * computePeaks2(FILE * infile, int m, int channels) {
 
-    /* First, get the 
-
     /* First, compute the spectrogram. */
     return NULL;
 }
@@ -170,7 +169,7 @@ PeakVector * computePeaks2(FILE * infile, int m, int channels) {
 int main(int argc, char *argv[]) {
 
     FILE * wav = fopen(argv[1], "r");
-    int channels = readWAVHeader(wav);
+    int channels = readWAVChannels(wav);
 
     printf("detected %d channels.\n", channels);
 
