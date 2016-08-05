@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <complex.h>
+#include <stdint.h>
 
 
 /* Reads the header of a WAV file and returns the number of channels in it.
