@@ -178,14 +178,15 @@ typedef struct _Fingerprint {
     int frequency1;
     int frequency2;
     /* The time difference between the two peaks. */
-    int timedifference;
+    int timeDifference;
 } Fingerprint;
 
 /* Package a pair of peaks into a fingerprint. */
 Fingerprint fromPeaks(Peak p1, Peak p2) {
     Fingerprint result = { .timeWindow = p1.timeWindow,
-        .frequency1 = p1.frequency, .frequency2 = p2.frequency,
-        .timedifference = p2.timeWindow - p1.timeWindow };
+        .frequency1 = p1.frequency,
+        .frequency2 = p2.frequency,
+        .timeDifference = p2.timeWindow - p1.timeWindow };
     return result;
 }
 
@@ -265,18 +266,34 @@ FingerprintVector * fingerprintPeaks(PeakVector * pv) {
     return result;
 }
 
+
+
+/* Take a vector of fingerprint structures and print them out to stdout.
+ * Also performs the hashing.
+ * For now, there's no hashing actually, we just output the entire fingerprint.
+ */
+void printFingerprints(FingerprintVector * fps) {
+    
+    for (int i = 0; i < fps->elements; i++) {
+        Fingerprint fp = getFingerprint(fps, i);
+        printf("%d %d %d %d\n", fp.timeWindow, fp.frequency1,
+                fp.frequency2, fp.timeDifference);
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     FILE * wav = fopen(argv[1], "r");
     int channels = readWAVChannels(wav);
 
-    printf("detected %d channels.\n", channels);
+    /* printf("detected %d channels.\n", channels);*/
 
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
-    printf("detected %d peaks.\n", peaks->elements);
+    /* printf("detected %d peaks.\n", peaks->elements);*/
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
-    printf("and created %d fingerprints.\n", prints->elements);
+    /* printf("and created %d fingerprints.\n", prints->elements);*/
+    printFingerprints(prints);
 
     return 0;
 }
