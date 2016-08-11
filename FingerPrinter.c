@@ -267,6 +267,15 @@ FingerprintVector * fingerprintPeaks(PeakVector * pv) {
 }
 
 
+/* Hash a given fingerprint's two frequencies as well as time delta together.
+ */
+unsigned int djbHash(Fingerprint fp) {
+    unsigned int hash = 5381;
+    hash = ((hash << 5) + hash) + fp.frequency1;
+    hash = ((hash << 5) + hash) + fp.frequency2;
+    hash = ((hash << 5) + hash) + fp.timeDifference;
+    return hash;
+}
 
 /* Take a vector of fingerprint structures and print them out to stdout.
  * Also performs the hashing.
@@ -276,8 +285,8 @@ void printFingerprints(FingerprintVector * fps) {
     
     for (int i = 0; i < fps->elements; i++) {
         Fingerprint fp = getFingerprint(fps, i);
-        printf("%d %d %d %d\n", fp.timeWindow, fp.frequency1,
-                fp.frequency2, fp.timeDifference);
+        unsigned int hash = djbHash(fp);
+        printf("%d %u\n", fp.timeWindow, hash);
     }
 }
 
