@@ -277,23 +277,24 @@ unsigned int djbHash(Fingerprint fp) {
     return hash;
 }
 
-/* Take a vector of fingerprint structures and print them out to stdout.
- * Also performs the hashing.
- * For now, there's no hashing actually, we just output the entire fingerprint.
+/* Take a vector of fingerprint structures and print hashes to stdout in a
+ * format that sql can read as csv.
  */
-void printFingerprints(FingerprintVector * fps) {
+void printFingerprints(FingerprintVector * fps, int songId) {
     
     for (int i = 0; i < fps->elements; i++) {
         Fingerprint fp = getFingerprint(fps, i);
         unsigned int hash = djbHash(fp);
-        printf("%d %u\n", fp.timeWindow, hash);
+        printf("%u\t%d\t%u\n", hash, songId, fp.timeWindow);
     }
 }
 
 int main(int argc, char *argv[]) {
 
+    int songId = atoi(argv[2]);
     FILE * wav = fopen(argv[1], "r");
     int channels = readWAVChannels(wav);
+
 
     /* printf("detected %d channels.\n", channels);*/
 
@@ -302,7 +303,7 @@ int main(int argc, char *argv[]) {
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
     /* printf("and created %d fingerprints.\n", prints->elements);*/
-    printFingerprints(prints);
+    printFingerprints(prints, songId);
 
     return 0;
 }
