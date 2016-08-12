@@ -285,13 +285,19 @@ void printFingerprints(FingerprintVector * fps, int songId) {
     for (int i = 0; i < fps->elements; i++) {
         Fingerprint fp = getFingerprint(fps, i);
         unsigned int hash = djbHash(fp);
-        printf("%u\t%d\t%u\n", hash, songId, fp.timeWindow);
+        if (songId)
+            printf("%u\t%d\t%u\n", hash, songId, fp.timeWindow);
+        else
+            printf("%u\t%u\n", hash, fp.timeWindow);
     }
 }
 
 int main(int argc, char *argv[]) {
 
-    int songId = atoi(argv[2]);
+    int songId = 0;
+    if (argc == 3) {
+        songId = atoi(argv[2]);
+    }
     FILE * wav = fopen(argv[1], "r");
     int channels = readWAVChannels(wav);
 
