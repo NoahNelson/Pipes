@@ -302,13 +302,13 @@ int main(int argc, char *argv[]) {
     int channels = readWAVChannels(wav);
 
 
-    /* printf("detected %d channels.\n", channels);*/
+    /*printf("detected %d channels.\n", channels);*/
 
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
-    /* printf("detected %d peaks.\n", peaks->elements);*/
+    /*printf("detected %d peaks.\n", peaks->elements);*/
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
-    /* printf("and created %d fingerprints.\n", prints->elements);*/
+    /*printf("and created %d fingerprints.\n", prints->elements);*/
     printFingerprints(prints, songId);
 
     return 0;
