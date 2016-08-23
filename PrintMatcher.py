@@ -6,8 +6,8 @@ import argparse
 import MySQLdb
 import sys
 
-BINSIZE = 10
-MATCHTHRESHOLD = 100
+BINSIZE = 5
+MATCHTHRESHOLD = 0
 
 class DeltaBin:
     """Stores time deltas in bins so that it's easy to get the size of the
@@ -48,6 +48,7 @@ def matchFingerPrintFromFile(stream, dbCursor):
                 "SELECT songId, offset FROM fingerprints \
                  WHERE hash = %d" % hashVal)
         results = dbCursor.fetchall()
+        print "got %d results from db" % len(results)
         for row in results:
             songId = row[0]
             offset2 = row[1]
@@ -65,6 +66,7 @@ def matchFingerPrintFromFile(stream, dbCursor):
             maxDeltas = maxBin
             bestMatch = songId
             
+    print "best match is %d with %d deltas in a bin" % (bestMatch, maxDeltas)
     return bestMatch
 
 
