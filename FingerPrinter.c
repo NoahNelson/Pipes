@@ -10,13 +10,13 @@
 /* Initial capacity of peak vectors. */
 #define I_CAP 8
 /* Length of fourier transforms - how many samples are fed into fft. */
-#define FFT_LEN 512
+#define FFT_LEN 4096
 /* Sample-step between time windows - how many samples we slide forward to the
  * next fft. */
 /*#define SLIDE_LEN FFT_LEN / 2*/
 /* Neighborhood on each side of a point which it must exceed to be a peak. */
 #define SIDES 2
-#define THRESHOLD 3800000.0
+#define THRESHOLD 12000000.0
 #define DELTA 10000.0
 #define FANOUT 5
 
@@ -111,7 +111,7 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
     for (int i = 0; i < m/2; i++)
         inputs[i] = inputs[i + m/2];
 
-    int fileEnd = getNextMValues(infile, inputs + m/2, m/2, channels) != m/2;
+    int fileEnd = (getNextMValues(infile, inputs + m/2, m/2, channels) != m/2);
     /* Read till the end of the file, collecting peaks. */
     while (!fileEnd) {
         
@@ -154,7 +154,7 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
 
         t++;
 
-        fileEnd = getNextMValues(infile, inputs + m/2, m/2, channels) != m/2;
+        fileEnd = (getNextMValues(infile, inputs + m/2, m/2, channels) != m/2);
     }
 
     return result;
@@ -270,10 +270,9 @@ FingerprintVector * fingerprintPeaks(PeakVector * pv) {
 /* Hash a given fingerprint's two frequencies as well as time delta together.
  */
 unsigned int djbHash(Fingerprint fp) {
-    unsigned int hash = 5381;
-    hash = ((hash << 5) + hash) + fp.frequency1;
-    hash = ((hash << 5) + hash) + fp.frequency2;
-    hash = ((hash << 5) + hash) + fp.timeDifference;
+    unsigned int hash = fp.frequency1;
+    hash = (hash << 16) + hash + fp.frequency2;
+    hash = (hash << 16) + hash + fp.timeDifference;
     return hash;
 }
 
@@ -286,30 +285,42 @@ void printFingerprints(FingerprintVector * fps, int songId) {
         Fingerprint fp = getFingerprint(fps, i);
         unsigned int hash = djbHash(fp);
         if (songId)
-            printf("%u\t%d\t%u\n", hash, songId, fp.timeWindow);
+            printf("%d\t%u\t%u\n", songId, hash, fp.timeWindow);
         else
             printf("%u\t%u\n", hash, fp.timeWindow);
     }
 }
 
+/********
+ * Usage:
+ * ./Fingerprinter <wavFile> <?songID>
+ *
+ * Spits fingerprint to stdout (usually piped to a csv file)
+ * file has lines which look like:
+ * <songId (if it exists)>\t<hash>\t<timewindow>
+ */
+
 int main(int argc, char *argv[]) {
 
     int songId = 0;
+    int verbose = 0;
     if (argc == 3) {
         songId = atoi(argv[2]);
     }
+    if (argc == 4)
+        verbose = 1;
     FILE * wav = fopen(argv[1], "r");
     int channels = readWAVChannels(wav);
 
-
-    /*printf("detected %d channels.\n", channels);*/
-
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
-    /*printf("detected %d peaks.\n", peaks->elements);*/
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
-    /*printf("and created %d fingerprints.\n", prints->elements);*/
     printFingerprints(prints, songId);
+
+    if (verbose) {
+        printf("detected %d peaks.\n", peaks->elements);
+        printf("and created %d fingerprints.\n", prints->elements);
+    }
 
     return 0;
 }
