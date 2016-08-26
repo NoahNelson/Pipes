@@ -7,7 +7,7 @@ import sqlite3
 import sys
 from os.path import splitext
 
-BINSIZE = 5
+BINSIZE = 4
 MATCHTHRESHOLD = 100
 
 ############################################################################
@@ -28,7 +28,7 @@ class DeltaBin:
 
     def add(self, delta):
         """Add the given delta to the correct bin"""
-        index = delta / self.binSize
+        index = delta // self.binSize
         if index in self.numbers:
             self.numbers[index] += 1
         else:
@@ -50,7 +50,7 @@ def hashMatchesFromDB(dbCursor, hashVal):
              WHERE hash = %d" % hashVal)
     return dbCursor.fetchall()
 
-def hashMatchesFromFile(stream, hashVal, songId=0):
+def hashMatchesFromFile(stream, hashVal):
     """Get matches of a hash from a given file stream."""
     results = []
     for line in stream:

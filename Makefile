@@ -10,6 +10,8 @@ CFLAGS = -g -Wall -Werror -std=c99
 
 all: TestFourierTransform FingerPrinter
 
+# Dependencies of this aren't exactly right. Should detect if we need new
+# fingerprints.
 test: FingerPrinter $(SCRIPTS)
 	rm -f $(SQLITE)
 	sqlite3 $(SQLITE) < $(DBINIT)
