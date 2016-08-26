@@ -14,5 +14,6 @@ done
 for f in TestSet/*ID.csv
 do
     echo "Inserting $f into sqlite database at $1"
-    echo ".mode csv;.import $f fingerprints;" | sqlite3 $1
+    echo ".mode csv
+.import $f fingerprints" | sqlite3 $1
 done

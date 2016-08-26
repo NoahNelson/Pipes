@@ -54,7 +54,7 @@ def hashMatchesFromFile(stream, hashVal, songId=0):
     """Get matches of a hash from a given file stream."""
     results = []
     for line in stream:
-        fp = line.split('\t')
+        fp = line.split(',')
         hashVal2 = int(fp[0])
         timeOffset = int(fp[1])
         if hashVal2 == hashVal:
@@ -68,7 +68,7 @@ def matchesBetweenFiles(snippetStream, masterStream):
     # matching stream 1 against stream 2
     matchBins = DeltaBin(BINSIZE)
     for line in snippetStream:
-        fp = line.split('\t')
+        fp = line.split(',')
         hashVal = int(fp[0])
         offset = int(fp[1])
         matches = hashMatchesFromFile(masterStream, hashVal)
@@ -86,7 +86,7 @@ def matchesInDB(snippetStream, dbCursor):
     # Record the time delta between them, and the song id of the match.
     matches = {}
     for line in snippetStream:
-        fp = line.split('\t')
+        fp = line.split(',')
         hashVal = int(fp[0])
         offset = int(fp[1])
         results = hashMatchesFromDB(dbCursor, hashVal)
@@ -130,6 +130,7 @@ if __name__ == '__main__':
         dbMatches = matchesInDB(snippetStream, curs)
         print("{snip} against {db}".format(snip=snippetFilename,
                 db=masterFilename))
+        print("SongId:\tMatches:")
         for songId, matches in dbMatches.items():
             print("{id}\t{num}".format(id=songId, num=matches))
         snippetStream.close()
