@@ -7,6 +7,6 @@ for f in TestSet/*{1,2,3}.csv
 do
     for g in TestSet/*FULL.csv
     do
-        python PrintMatcher.py $f $g
+        python3 PrintMatcher.py $f $g
     done
 done
