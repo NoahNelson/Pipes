@@ -138,7 +138,7 @@ if __name__ == '__main__':
         masterStream = open(masterFilename, 'r')
         matches = matchesBetweenFiles(snippetStream, masterStream)
         print("{mf}\t{sf}\t{matches}".format(mf=masterFilename,
-                        sf=snippetFilename, matches=mathces))
+                        sf=snippetFilename, matches=matches))
         masterStream.close()
         snippetStream.close()
 

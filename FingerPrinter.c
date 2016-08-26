@@ -285,9 +285,9 @@ void printFingerprints(FingerprintVector * fps, int songId) {
         Fingerprint fp = getFingerprint(fps, i);
         unsigned int hash = djbHash(fp);
         if (songId)
-            printf("%d\t%u\t%u\n", songId, hash, fp.timeWindow);
+            printf("%d,%u,%u\n", songId, hash, fp.timeWindow);
         else
-            printf("%u\t%u\n", hash, fp.timeWindow);
+            printf("%u,%u\n", hash, fp.timeWindow);
     }
 }
 
