@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <complex.h>
+#include <string.h>
 #include "FourierTransform.h"
 #include "WAVReading.h"
 
@@ -86,6 +87,13 @@ void vectorAppend(PeakVector * vect, Peak pk) {
 void freeVector(PeakVector * vect) {
     free(vect->peaks);
     free(vect);
+}
+
+/* Compute the time-frequency spectrogram of a given WAV file. These can be
+ * pretty big, around 2Gb for a 5-minute song. */
+double complex ** computeSpectrogram(FILE * infile, int m, int channels) {
+    /*TODO*/
+    return NULL;
 }
 
 /* Compute the time-frequency peaks from the samples in a given WAV file. */
@@ -198,7 +206,7 @@ typedef struct _FingerprintVector {
     Fingerprint * fingerprints;
 } FingerprintVector;
 
-/* Initialize an empty vector */
+/* Initialize an empty fingerprint vector */
 FingerprintVector * newFPVector() {
     FingerprintVector * new = malloc(sizeof(FingerprintVector));
     if (new == NULL) {
@@ -269,10 +277,10 @@ FingerprintVector * fingerprintPeaks(PeakVector * pv) {
 
 /* Hash a given fingerprint's two frequencies as well as time delta together.
  */
-unsigned int djbHash(Fingerprint fp) {
+unsigned int basicHash(Fingerprint fp) {
     unsigned int hash = fp.frequency1;
-    hash = (hash << 16) + hash + fp.frequency2;
-    hash = (hash << 16) + hash + fp.timeDifference;
+    hash = (hash << 16) + fp.frequency2;
+    hash = (hash << 16) + fp.timeDifference;
     return hash;
 }
 
@@ -283,7 +291,7 @@ void printFingerprints(FingerprintVector * fps, int songId) {
     
     for (int i = 0; i < fps->elements; i++) {
         Fingerprint fp = getFingerprint(fps, i);
-        unsigned int hash = djbHash(fp);
+        unsigned int hash = basicHash(fp);
         if (songId)
             printf("%d,%u,%u\n", songId, hash, fp.timeWindow);
         else
@@ -293,33 +301,55 @@ void printFingerprints(FingerprintVector * fps, int songId) {
 
 /********
  * Usage:
- * ./Fingerprinter <wavFile> <?songID>
+ * ./Fingerprinter <wavFile>
  *
- * Spits fingerprint to stdout (usually piped to a csv file)
+ * fingerprints a wav file, dumping the fingerprints to stdout
+ * (usually piped to a csv file).
  * file has lines which look like:
  * <songId (if it exists)>\t<hash>\t<timewindow>
+ *
+ * options:
+ * -s <songId> : an optional songId to be attached to the fingerprints, for
+ *               importing to sqlite.
+ * -v : verbose, a debug mode where fingerprints are not printed to stdout
+ *      but some information about the fingerprinting process is given.
  */
-
 int main(int argc, char *argv[]) {
 
     int songId = 0;
     int verbose = 0;
-    if (argc == 3) {
-        songId = atoi(argv[2]);
+    char * filename = NULL;
+    /* Parse command line arguments. */
+    argc--;
+    argv++;
+    while (argc > 0) {
+        if (strcmp(*argv, "-v") == 0)
+            verbose = 1;
+        else if (strcmp(*argv, "-s") == 0) {
+            argc--;
+            argv++;
+            songId = atoi(*argv);
+        }
+        else
+            filename = *argv;
+
+        argc--;
+        argv++;
     }
-    if (argc == 4)
-        verbose = 1;
-    FILE * wav = fopen(argv[1], "r");
+
+    FILE * wav = fopen(filename, "r");
     int channels = readWAVChannels(wav);
 
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
-    printFingerprints(prints, songId);
-
+    
     if (verbose) {
         printf("detected %d peaks.\n", peaks->elements);
         printf("and created %d fingerprints.\n", prints->elements);
+    }
+    else {
+        printFingerprints(prints, songId);
     }
 
     return 0;
