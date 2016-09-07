@@ -10,16 +10,25 @@
 
 /* Initial capacity of peak vectors. */
 #define I_CAP 8
+
 /* Length of fourier transforms - how many samples are fed into fft. */
 #define FFT_LEN 4096
-/* Sample-step between time windows - how many samples we slide forward to the
- * next fft. */
-/*#define SLIDE_LEN FFT_LEN / 2*/
+
 /* Neighborhood on each side of a point which it must exceed to be a peak. */
-#define SIDES 2
+#define NEIGHBORHOOD 8
+
+/* Threshold for peaks - peaks must have at least this magnitude. */
 #define THRESHOLD 12000000.0
+
+/* Delta threshold for peaks - peaks must be at least this much greater than
+ * their neighboring bins. */
 #define DELTA 10000.0
-#define FANOUT 5
+
+/* Fanout factor for constellating peaks. For each peak, take the next FANOUT
+ * peaks and make a fingerprint out of each of those pairs. */
+#define FANOUT 5 /* TODO: increase this and adjust everything else to keep
+                    fingerprint numbers reasonable. */
+
 
 /**********************
  * Peak Data Structures
@@ -33,14 +42,16 @@ typedef struct _Peak {
     int timeWindow;
 } Peak;
 
-/* frequency-time peak vectors. */
+/* Frequency-time peak vectors. */
 typedef struct _PeakVector {
     int capacity;
     int elements;
     Peak * peaks;
 } PeakVector;
 
-/* Initialize an empty vector */
+/* Initialize an empty peak vector. Allocates memory for the vector itself
+ * and its contents, which starts as I_CAP peaks stored in contiguous memory.
+ */
 PeakVector * newVector() {
     PeakVector * new = malloc(sizeof(PeakVector));
     if (new == NULL) {
@@ -59,7 +70,8 @@ PeakVector * newVector() {
     return new;
 }
 
-/* Get the peak at a given index in a peak vector. */
+/* Get the peak at a given index in a peak vector. Exits if the index is
+ * invalid, for safety. */
 Peak getPeak(PeakVector * vect, int index) {
     if (index < 0 || index >= vect->elements) {
         fprintf(stderr, "error! vector access at invalid index.\n");
@@ -70,6 +82,8 @@ Peak getPeak(PeakVector * vect, int index) {
 
 /* Append a peak to a peak vector, potentially resizing it. */
 void vectorAppend(PeakVector * vect, Peak pk) {
+
+    /* If the vector is full, increase its capacity by double. */
     if (vect->elements == vect->capacity) {
         vect->capacity *= 2;
         vect->peaks = realloc(vect->peaks, sizeof(Peak) * vect->capacity);
@@ -83,7 +97,7 @@ void vectorAppend(PeakVector * vect, Peak pk) {
     vect->elements++;
 }
 
-/* Free the memory associated with a vector. Also frees the pointer passed. */
+/* Free all memory associated with a vector. Also frees the pointer passed. */
 void freeVector(PeakVector * vect) {
     free(vect->peaks);
     free(vect);
@@ -91,9 +105,68 @@ void freeVector(PeakVector * vect) {
 
 /* Compute the time-frequency spectrogram of a given WAV file. These can be
  * pretty big, around 2Gb for a 5-minute song. */
-double complex ** computeSpectrogram(FILE * infile, int m, int channels) {
+double complex ** computeSpectrogram(FILE * infile, int m, int channels,
+        int length) {
     /*TODO*/
-    return NULL;
+    /* Allocate memory for the spectrogram - an array of arrays, one for each
+     * time window, each containing the fourier transform frequency profile
+     * of that time window. */
+    /* Problem: We don't really know how many time windows there will be.
+     * Assume we have this, can compute it from the wav header. */
+    int windows = (length / (m / 2)) - 1;
+    double complex ** spectrogram = malloc(sizeof(double complex *) * windows);
+    if (spectrogram == NULL) {
+        fprintf(stderr, "error! Out of memory.\n");
+        exit(1);
+    }
+    /* This pointer lets us chase the spectrogram and do our ffts but still return the
+     * start of the spectrogram. Replace with pointer arithmetic later when windows
+     * has been vetted. */
+    double complex ** fft = spectrogram;
+
+    /* Read in the first m values from the file. */
+    double complex * inputs = malloc(sizeof(double complex) * m);
+    if (inputs == NULL) {
+        fprintf(stderr, "error! Out of memory.\n");
+        exit(1);
+    }
+
+    int fileEnd = getNextMValues(infile, inputs, m, channels) != m;
+    
+    if (fileEnd) {
+        fprintf(stderr, "error: Could not get %d samples from wav file.\n", m);
+        exit(1);
+    }
+
+    /* Compute the fourier transform of the first window. */
+
+    /* While there's new data, repeatedly shift the array of inputs, read the
+     * next m/2 values in, and take a new fourier transform. */
+
+    do {
+        *fft = fastFourierTransform(inputs, m);
+        fft++;
+        windows--;
+
+        /* Shift the array and read the next m/2 values. */
+        for (int i = 0; i < m/2; i++)
+            inputs[i] = inputs[i + m/2];
+
+        fileEnd = getNextMValues(infile, inputs, m/2, channels) != m/2;
+    } while (!fileEnd);
+
+    /* And do the last time window. */
+    *fft = fastFourierTransform(inputs, m);
+    fft++;
+    windows--;
+
+    /* Make sure the windows calculation was accurate. */
+    if (windows != 0) {
+        printf("makeshift assert\n");
+        printf("expected windows to be zero, it was %d\n", windows);
+    }
+
+    return spectrogram;
 }
 
 /* Compute the time-frequency peaks from the samples in a given WAV file. */
@@ -137,10 +210,10 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
 
         freeVector(potentials);
         potentials = newVector();
-        for (int i = SIDES; i < m - SIDES; i++) {
+        for (int i = NEIGHBORHOOD; i < m - NEIGHBORHOOD; i++) {
             double mag = cabs(nextFFTValues[i]);
             int isPeak = 1;
-            for (int j = 1; j <= SIDES; j++) {
+            for (int j = 1; j <= NEIGHBORHOOD; j++) {
                 isPeak = isPeak && mag > cabs(nextFFTValues[i+j]) + DELTA;
                 isPeak = isPeak && mag > cabs(nextFFTValues[i-j]) + DELTA;
             }
@@ -276,6 +349,11 @@ FingerprintVector * fingerprintPeaks(PeakVector * pv) {
 
 
 /* Hash a given fingerprint's two frequencies as well as time delta together.
+ *
+ * Currently, the hash function naively assumes that each of these three
+ * values will be less than 16 bits long to get a no-collision hash by just
+ * concatenating the bits together. Later we can make a better space/collisions
+ * tradeoff with a real hash function.
  */
 unsigned int basicHash(Fingerprint fp) {
     unsigned int hash = fp.frequency1;
@@ -339,6 +417,17 @@ int main(int argc, char *argv[]) {
 
     FILE * wav = fopen(filename, "r");
     int channels = readWAVChannels(wav);
+    int length = readWAVLength(wav, channels);
+
+    if (verbose) {
+        printf("detected %d channels.\n", channels);
+        printf("with a total length of %d.\n", length);
+
+        double complex ** spec = computeSpectrogram(wav, FFT_LEN, channels, length);
+        printf("starting with %f\n", cabs(spec[0][0]));
+
+        exit(0);
+    }
 
     PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
 

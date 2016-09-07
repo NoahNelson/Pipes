@@ -16,16 +16,19 @@ uint16_t readWAVChannels(FILE * infile) {
 
     uint16_t result;
 
+    /* Seek to the beginning of the channels integer. */
     if (fseek(infile, 22, SEEK_SET)) {
         fprintf(stderr, "readWAVChannels: error seeking file.\n");
         exit(1);
     }
 
+    /* Read the 2-byte channels integer into the result. */
     if (fread(&result, 2, 1, infile) != 1) {
         fprintf(stderr, "readWAVChannels: error reading file.\n");
         exit(1);
     }
 
+    /* Seek to the beginning of the data section. */
     if (fseek(infile, 44, SEEK_SET)) {
         fprintf(stderr, "readWAVChannels: error seeking file.\n");
         exit(1);
@@ -39,23 +42,42 @@ uint16_t readWAVChannels(FILE * infile) {
 int readWAVLength(FILE * infile, int channels) {
 
     int result;
+    int sampleSize;
 
+    /* Seek to the location of the sample size integer in the header. */
+    if (fseek(infile, 34, SEEK_SET)) {
+        fprintf(stderr, "readWAVLength: error seeking file.\n");
+        exit(1);
+    }
+
+    /* Read the size of samples in this wav file. */
+    if (fread(&sampleSize, 2, 1, infile) != 1) {
+        fprintf(stderr, "readWAVLength: error reading sample size.\n");
+        exit(1);
+    }
+
+    /* Seek to the location of the data size integer in the header. */
     if (fseek(infile, 40, SEEK_SET)) {
         fprintf(stderr, "readWAVLength: error seeking file.\n");
         exit(1);
     }
 
+    /* Read the 4-byte size integer into the result. */
     if (fread(&result, 4, 1, infile) != 1) {
         fprintf(stderr, "readWAVLength: error reading file.\n");
         exit(1);
     }
 
+    /* Seek to the beginning of the data section. */
     if (fseek(infile, 44, SEEK_SET)) {
         fprintf(stderr, "readWAVLength: error seeking file.\n");
         exit(1);
     }
+
+    printf("Found %d size and %d per sample, yeilding %d samples in a channel.\n",
+            result, sampleSize, (result / (sampleSize / 8)) / channels);
         
-    return result / channels;
+    return (result / (sampleSize / 8)) / channels;
 }
 
 
