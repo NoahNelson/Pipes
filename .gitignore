@@ -1,16 +1,16 @@
+# macOS automatically generates this hidden file
+.DS_Store
+
+# Executables
 TestFourierTransform
 FingerPrinter
+
+# Object files
 *.o
-.DS_Store
-Claves.wav
-03 The Future Freaks Me Out.wav
-04 For River - Piano (Sarah & Tommy's Version).wav
 
-ffmo.wav
-testneg.wav
-testpos.wav
-
-*.csv
-
+# WAVs and CSVs go in TestSet folder
 TestSet
+
+# So I could more freely play around with the files in TestSet,
+# I copied all the WAV files to this backup directory.
 WAVBackup
