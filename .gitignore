@@ -8,6 +8,9 @@ FingerPrinter
 # Object files
 *.o
 
+# Swap files
+*.swp
+
 # WAVs and CSVs go in TestSet folder
 TestSet
 
