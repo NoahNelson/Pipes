@@ -74,9 +74,6 @@ int readWAVLength(FILE * infile, int channels) {
         exit(1);
     }
 
-    printf("Found %d size and %d per sample, yeilding %d samples in a channel.\n",
-            result, sampleSize, (result / (sampleSize / 8)) / channels);
-        
     return (result / (sampleSize / 8)) / channels;
 }
 
@@ -101,7 +98,8 @@ int getNextMValues(FILE * infile,
         output[i] = sample;
 
         /* Seek ahead past the other channels' samples. */
-        if (fseek(infile, 2 * channels, SEEK_CUR)) {
+        if (fseek(infile, 2 * (channels - 1), SEEK_CUR)) {
+            /* ASSume: 2 byte sample size. */
             fprintf(stderr, "getNextMValues: error seeking file.\n");
             exit(1);
         }
