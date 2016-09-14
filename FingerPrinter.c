@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <complex.h>
 #include <string.h>
+#include <assert.h>
 #include "FourierTransform.h"
 #include "WAVReading.h"
 
@@ -17,6 +18,10 @@
 /* Neighborhood on each side of a point which it must exceed to be a peak. */
 #define NEIGHBORHOOD 8
 
+/* Square size for experimental peak-finding algorithm.
+ * Larger keeps peak numbers manageable, but hurts frequency and time res */
+#define SQUARESIZE 5
+
 /* Threshold for peaks - peaks must have at least this magnitude. */
 #define THRESHOLD 12000000.0
 
@@ -26,7 +31,7 @@
 
 /* Fanout factor for constellating peaks. For each peak, take the next FANOUT
  * peaks and make a fingerprint out of each of those pairs. */
-#define FANOUT 5 /* TODO: increase this and adjust everything else to keep
+#define FANOUT 10 /* TODO: increase this and adjust everything else to keep
                     fingerprint numbers reasonable. */
 
 
@@ -105,23 +110,21 @@ void freeVector(PeakVector * vect) {
 
 /* Compute the time-frequency spectrogram of a given WAV file. These can be
  * pretty big, around 2Gb for a 5-minute song. */
-double complex ** computeSpectrogram(FILE * infile, int m, int channels,
-        int length) {
-    /*TODO*/
+double complex ** computeSpectrogram(
+        FILE * infile, int m, int channels, int windows) {
+
     /* Allocate memory for the spectrogram - an array of arrays, one for each
      * time window, each containing the fourier transform frequency profile
      * of that time window. */
-    /* Problem: We don't really know how many time windows there will be.
-     * Assume we have this, can compute it from the wav header. */
-    int windows = (length / (m / 2)) - 1;
     double complex ** spectrogram = malloc(sizeof(double complex *) * windows);
     if (spectrogram == NULL) {
         fprintf(stderr, "error! Out of memory.\n");
         exit(1);
     }
-    /* This pointer lets us chase the spectrogram and do our ffts but still return the
-     * start of the spectrogram. Replace with pointer arithmetic later when windows
-     * has been vetted. */
+
+    /* This pointer lets us chase the spectrogram and do our ffts but still
+     * return the start of the spectrogram. Replace with pointer arithmetic
+     * later when windows has been vetted. */
     double complex ** fft = spectrogram;
 
     /* Read in the first m values from the file. */
@@ -155,19 +158,57 @@ double complex ** computeSpectrogram(FILE * infile, int m, int channels,
         fileEnd = getNextMValues(infile, inputs, m/2, channels) != m/2;
     } while (!fileEnd);
 
-    /* And do the last time window. */
-    *fft = fastFourierTransform(inputs, m);
-    fft++;
-    windows--;
+    /* fileEnd should be replaced by feof function. */
+    assert(feof(infile));
 
     /* Make sure the windows calculation was accurate. */
-    if (windows != 0) {
-        printf("makeshift assert\n");
-        printf("expected windows to be zero, it was %d\n", windows);
-    }
+    assert(windows == 0);
 
     return spectrogram;
 }
+
+/* Second version of computePeaks, which holds the spectrogram in memory
+ * to find peaks. 
+ *
+ * This works by breaking up the spectrogram into squares of a given
+ * side length, finding the max in each of those squares, and cutting off
+ * based on a threshold. */
+PeakVector * computePeaksNew(FILE * infile, int m, int channels, int windows) {
+
+    /* First, compute the spectrogram. */
+    double complex ** spectrogram
+        = computeSpectrogram(infile, m, channels, windows);
+
+    /* Now, iterate over the spectrogram's square regions, collecting peaks.
+     * For now, very simplistic brute-force algorithm. */
+    PeakVector * peaks = newVector();
+
+    for (int i = 0; i < windows - SQUARESIZE; i += SQUARESIZE) {
+        for (int j = 0; j < m - SQUARESIZE; j += SQUARESIZE) {
+            double maxAmplitude = THRESHOLD;
+            int frequency = -1;
+            int timeWindow = -1;
+            for (int x = 0; x < SQUARESIZE; x++) {
+                for (int y = 0; y < SQUARESIZE; y++) {
+                    double amp = cabs(spectrogram[i+x][j+y]);
+                    if (amp > maxAmplitude) {
+                        maxAmplitude = amp;
+                        frequency = j + y;
+                        timeWindow = i + x;
+                    }
+                }
+            }
+
+            if (frequency != -1) {
+                Peak p = { .frequency = frequency, .timeWindow = timeWindow };
+                vectorAppend(peaks, p);
+            }
+        }
+    }
+
+    return peaks;
+}
+
 
 /* Compute the time-frequency peaks from the samples in a given WAV file. */
 PeakVector * computePeaks(FILE * infile, int m, int channels) {
@@ -239,14 +280,6 @@ PeakVector * computePeaks(FILE * infile, int m, int channels) {
     }
 
     return result;
-}
-
-/* Second version of computePeaks, which holds the spectrogram in
- * memory to find peaks. */
-PeakVector * computePeaks2(FILE * infile, int m, int channels) {
-
-    /* First, compute the spectrogram. */
-    return NULL;
 }
 
 /* Structure of a fingerprint. */
@@ -418,18 +451,15 @@ int main(int argc, char *argv[]) {
     FILE * wav = fopen(filename, "r");
     int channels = readWAVChannels(wav);
     int length = readWAVLength(wav, channels);
+    int windows = (length / (FFT_LEN / 2)) - 1;
 
     if (verbose) {
         printf("detected %d channels.\n", channels);
         printf("with a total length of %d.\n", length);
-
-        double complex ** spec = computeSpectrogram(wav, FFT_LEN, channels, length);
-        printf("starting with %f\n", cabs(spec[0][0]));
-
-        exit(0);
+        printf("and %d windows.\n", windows);
     }
 
-    PeakVector * peaks = computePeaks(wav, FFT_LEN, channels);
+    PeakVector * peaks = computePeaksNew(wav, FFT_LEN, channels, windows);
 
     FingerprintVector * prints = fingerprintPeaks(peaks);
     

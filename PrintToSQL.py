@@ -19,7 +19,8 @@ if __name__ == '__main__':
     prints = [tuple(line.split(',')) for line in printstream]
 
     curs.executemany(
-            'insert or ignore into fingerprints values (?, ?, ?)', prints)
+        'insert or ignore into fingerprints values (?, ?, ?)',
+        prints)
 
     conn.commit()
     conn.close()

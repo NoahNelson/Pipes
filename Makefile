@@ -19,6 +19,11 @@ test: FingerPrinter $(SCRIPTS)
 	./FillSQL.sh $(SQLITE)
 	./TestMatcher.sh $(SQLITE)
 
+snippet: FingerPrinter
+	./FillSQL.sh $(SQLITE)
+	./FingerPrinter TestSet/Angelssnippet.wav > TestSet/Angelssnippet.csv
+	python3 PrintMatcher.py TestSet/Angelssnippet.csv $(SQLITE)
+
 TestFourierTransform: TestFourierTransform.o FourierTransform.o
 	$(CC) $(CFLAGS) -o TestFourierTransform $^ $(LDFLAGS) -lm
 
